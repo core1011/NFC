@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
 
         mReadText = findViewById(R.id.readBtnView);
         mTagIdText=findViewById(R.id.id_tv);
-        
+
         String deviceModel = Build.MODEL; // 设备型号
 
         Log.i(TAG,deviceModel);
