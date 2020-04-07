@@ -1,5 +1,6 @@
 package com.ll.nfcdemo2;
 
+import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -10,7 +11,9 @@ import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.MifareUltralight;
 import android.nfc.tech.Ndef;
-import android.os.Parcelable;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Message;
 import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -28,9 +31,11 @@ public class MainActivity extends AppCompatActivity {
     private NfcAdapter mNfcAdapter;
     private PendingIntent mPendingIntent;
     private TextView mReadText,mTagIdText;
-
+    public static SerialTask serialtask = null;
+    public ActivityHandler handler = null;
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -38,27 +43,54 @@ public class MainActivity extends AppCompatActivity {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
+
         mReadText = findViewById(R.id.readBtnView);
         mTagIdText=findViewById(R.id.id_tv);
-        if (mNfcAdapter == null) {
-            Toast.makeText(this, "该设备不支持nfc", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
-        if (!mNfcAdapter.isEnabled()) {
-            Toast.makeText(this, "请打开nfc开关", Toast.LENGTH_SHORT).show();
-            Intent intent = new Intent(Settings.ACTION_NFC_SETTINGS);
-            startActivity(intent);
+        
+        String deviceModel = Build.MODEL; // 设备型号
 
+        Log.i(TAG,deviceModel);
+        if(deviceModel.indexOf("madest")!=-1)  //a33 不带NFC
+        {
+            //适用于直板型10寸平板
+            handler = new ActivityHandler();
+            serialtask = new SerialTask(handler, this);
+            int fd = serialtask.fd;
+            if (fd > 0)
+            {
+                Log.i("serial-task", Integer.toString(fd));
+                serialtask.start();
+            } else {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("提示");
+                builder.setMessage("读卡设备打开失败!");
+                builder.setPositiveButton("是", null);
+                builder.show();
+            }
         }
+        else  //带NFC 3288
+        {
+            mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
+            if (mNfcAdapter == null) //不带NFC
+            {
+                Toast.makeText(this, "该设备不支持nfc", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+            if (!mNfcAdapter.isEnabled()) {
+                Toast.makeText(this, "请打开nfc开关", Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(Settings.ACTION_NFC_SETTINGS);
+                startActivity(intent);
+            }
 
-        //创建PendingIntent对象，当检查到一个tag标签就会执行此Intent
-        mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, getClass()), 0);
+            //创建PendingIntent对象，当检查到一个tag标签就会执行此Intent
+            mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, getClass()), 0);
+        }
     }
 
     @Override
-    protected void onNewIntent(Intent intent) {
+    protected void onNewIntent(Intent intent)
+    {
         super.onNewIntent(intent);
         //取出标签
         Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
@@ -171,7 +203,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        mNfcAdapter.enableForegroundDispatch(this, mPendingIntent, null, null);
+        if(mNfcAdapter!=null)
+        {
+            mNfcAdapter.enableForegroundDispatch(this, mPendingIntent, null, null);
+        }
     }
 
     @Override
@@ -200,4 +235,42 @@ public class MainActivity extends AppCompatActivity {
         return stringBuilder.toString();
 
     }
+
+
+    /**
+     * 接受消息，处理消息 ，此Handler会与当前主线程一块运行
+     * */
+    //自定义handler类
+    class ActivityHandler extends Handler {
+        @Override
+        //接收别的线程的信息并处理
+        public void handleMessage(Message msg) {
+            Bundle bundle = msg.getData();
+            try {
+                    if (isFinishing() || isDestroyed())
+                    {
+                        return;
+                    }
+                    switch (msg.arg1)
+                    {
+                        case 1:
+
+                            break;
+                        case 88:
+                            Bundle bundle88 = msg.getData();
+                            RfidData tmp = bundle88.getParcelable("rfiddata");
+                            Log.i(TAG, tmp.id);
+                            mTagIdText.setText(tmp.id);
+                            break;
+                            default:
+
+                    }
+                }
+                catch (Exception e)
+                {
+
+                }
+            }
+        }
+
 }
