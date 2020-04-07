@@ -43,12 +43,13 @@ public class MainActivity extends AppCompatActivity {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-
         mReadText = findViewById(R.id.readBtnView);
         mTagIdText=findViewById(R.id.id_tv);
 
-        String deviceModel = Build.MODEL; // 设备型号
 
+
+
+        String deviceModel = Build.MODEL; // 设备型号
         Log.i(TAG,deviceModel);
         if(deviceModel.indexOf("madest")!=-1)  //a33 不带NFC
         {
@@ -262,8 +263,7 @@ public class MainActivity extends AppCompatActivity {
                             Log.i(TAG, tmp.id);
                             mTagIdText.setText(tmp.id);
                             break;
-                            default:
-
+                        default:
                     }
                 }
                 catch (Exception e)
